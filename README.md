@@ -44,6 +44,7 @@ docker run -d \
   -e TAILSCALE_USE_WIP_CODE=1 \
   -e TS_STATE_DIR=/data \
   -e TS_HOSTNAME=idp \
+  -e TS_AUTHKEY=YOUR_TAILSCALE_AUTHKEY \
   -e TSIDP_ENABLE_STS=1 \
   ghcr.io/tailscale/tsidp:latest
 ```
@@ -52,6 +53,31 @@ Visit `https://idp.yourtailnet.ts.net` to confirm the service is running.
 
 > [!NOTE]
 > If you're running tsidp for the first time it may take a few minutes for the TLS certificate to generate. You may not be able to access the service until the certificate is ready.
+
+#### Using OAuth Client Secrets
+
+As an alternative to traditional auth keys, you can use OAuth client secrets for authentication:
+
+```bash
+# Run tsidp with OAuth client secret
+docker run -d \
+  --name tsidp \
+  -p 443:443 \
+  -v tsidp-data:/data \
+  -e TAILSCALE_USE_WIP_CODE=1 \
+  -e TS_STATE_DIR=/data \
+  -e TS_HOSTNAME=idp \
+  -e TSIDP_ENABLE_STS=1 \
+  -e TS_OAUTH_CLIENT_SECRET=tskey-client-xxxxxxxxxxxx \
+  -e TS_ADVERTISE_TAGS=tag:tsidp,tag:server \
+  ghcr.io/tailscale/tsidp:latest
+```
+
+> [!IMPORTANT]
+> When using OAuth client secrets:
+> - You must specify advertise tags using `TS_ADVERTISE_TAGS`
+> - The OAuth client secret must start with `tskey-client-`
+> - The tags must be properly configured in your Tailscale ACL policy
 
 ### Other Ways to Build and Run
 
@@ -75,7 +101,7 @@ $ git clone https://github.com/tailscale/tsidp.git
 $ cd tsidp
 
 # run with default values for flags
-$ TAILSCALE_USE_WIP_CODE=1 TS_AUTHKEY={YOUR_TAILSCALE_AUTHKEY} TSNET_FORCE_LOGIN=1 go run .
+$ TAILSCALE_USE_WIP_CODE=1 TS_AUTHKEY=YOUR_TAILSCALE_AUTHKEY TSNET_FORCE_LOGIN=1 go run .
 ```
 
 </details>
@@ -118,7 +144,7 @@ This is a permissive grant that is suitable for testing purposes:
 The `tsidp-server` is configured by several command-line flags:
 
 | Flag                    | Description                                                                                        | Default  |
-| ----------------------- | -------------------------------------------------------------------------------------------------- | -------- |
+| ------------------------| -------------------------------------------------------------------------------------------------- | -------- |
 | `-dir <path>`           | Directory path to save tsnet and tsidp state. Recommend to be set.                                 | `""`     |
 | `-hostname <hostname>`  | hostname on tailnet. Will become `<hostname>.your-tailnet.ts.net`                                  | `idp`    |
 | `-port <port>`          | Port to listen on                                                                                  | `443`    |
@@ -142,8 +168,18 @@ The `tsidp-server` binary is configured through the CLI flags above. However, th
 
 These environment variables are used when tsidp does not have any state information set in `-dir <path>`.
 
-- `TS_AUTHKEY=<key>`: Key for registering a tsidp as a new node on your tailnet. If omitted a link will be printed to manually register.
+> [!WARNING]
+> **Serverless/Stateless Deployment**: tsidp requires persistent state storage to function properly in production. Without a persistent `-dir`, the service will re-register with Tailscale on every restart, lose dynamic OIDC client registrations, and invalidate user sessions. Serverless environments without persistent storage are not recommended for production use.
+
+- `TS_AUTHKEY=<key>`: Key for registering a tsidp as a new node on your tailnet. If omitted (and no OAuth client secret is provided) a link will be printed to manually register.
 - `TSNET_FORCE_LOGIN=1`: Force re-login of the node. Useful during development.
+
+#### OAuth Configuration
+
+For using OAuth client secrets instead of traditional auth keys (environment variables only, no CLI flags):
+
+- `TS_OAUTH_CLIENT_SECRET=<secret>`: OAuth client secret (tskey-client-xxx) for authentication. Requires advertise tags.
+- `TS_ADVERTISE_TAGS=<tags>`: Comma-separated advertise tags (e.g., "tag:tsidp,tag:server"). Required when using OAuth client secrets.
 
 ### Docker Environment Variables
 
@@ -151,26 +187,27 @@ The Docker image exposes the CLI flags through environment variables. If omitted
 
 > [!NOTE] > `TS_STATE_DIR` and `TS_HOSTNAME` are legacy names. These will be replaced by `TSIDP_STATE_DIR` and `TSIDP_HOSTNAME` in the future.
 
-| Environment Variable                     | CLI flag                   |
-| ---------------------------------------- | -------------------------- |
-| `TS_STATE_DIR=<path>` _\*note prefix_    | `-dir <path>`              |
-| `TS_HOSTNAME=<hostname>` _\*note prefix_ | `-hostname <hostname>`     |
-| `TSIDP_PORT=<port>`                      | `-port <port>`             |
-| `TSIDP_LOCAL_PORT=<port>`                | `-local-port <port>`       |
-| `TSIDP_PORT=<port>`                      | `-port <port>`             |
-| `TSIDP_LOCAL_PORT=<local-port>`          | `-local-port <local-port>` |
-| `TSIDP_USE_FUNNEL=1`                     | `-funnel`                  |
-| `TSIDP_ENABLE_STS=1`                     | `-enable-sts`              |
-| `TSIDP_LOG=<level>`                      | `-log <level>`             |
-| `TSIDP_DEBUG_TSNET=1`                    | `-debug-tsnet`             |
-| `TSIDP_DEBUG_ALL_REQUESTS=1`             | `-debug-all-requests`      |
+| Environment Variable                     | CLI flag                       |
+| ---------------------------------------- | ------------------------------ |
+| `TS_STATE_DIR=<path>` _\*note prefix_    | `-dir <path>`                  |
+| `TS_HOSTNAME=<hostname>` _\*note prefix_ | `-hostname <hostname>`         |
+| `TSIDP_PORT=<port>`                      | `-port <port>`                 |
+| `TSIDP_LOCAL_PORT=<port>`                | `-local-port <port>`           |
+| `TSIDP_USE_FUNNEL=1`                     | `-funnel`                      |
+| `TSIDP_ENABLE_STS=1`                     | `-enable-sts`                  |
+| `TSIDP_LOG=<level>`                      | `-log <level>`                 |
+| `TSIDP_DEBUG_TSNET=1`                    | `-debug-tsnet`                 |
+| `TSIDP_DEBUG_ALL_REQUESTS=1`             | `-debug-all-requests`          |
+| `TS_AUTHKEY=<key>`                       | _(env var only)_               |
+| `TS_OAUTH_CLIENT_SECRET=<secret>`        | _(env var only)_               |
+| `TS_ADVERTISE_TAGS=<tags>`               | _(env var only)_               |
 
 ## Application Configuration Guides (WIP)
 
 tsidp can be used as IdP server for any application that supports custom OIDC providers.
 
 > [!IMPORTANT]
-> Note: If you'd like to use tsidp to login to a SaaS application outside of your tailnet rather than a self-hosted app inside of your tailnet, you'll need to run tsidp with `--funnel` enabled.
+> Note: If you'd like to use tsidp to login to a SaaS application outside of your tailnet rather than a self-hosted app inside of your tailnet, you'll need to run tsidp with `-funnel` enabled.
 
 - (TODO) Proxmox
 - (TODO) Grafana

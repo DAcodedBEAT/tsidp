@@ -58,6 +58,10 @@ var (
 func main() {
 	flag.Parse()
 	ctx := context.Background()
+
+	// Get OAuth configuration from environment variables
+	oauthClientSecret := os.Getenv("TS_OAUTH_CLIENT_SECRET")
+	advertiseTags := os.Getenv("TS_ADVERTISE_TAGS")
 	if !envknob.UseWIPCode() {
 		slog.Error("cmd/tsidp is a work in progress and has not been security reviewed;\nits use requires TAILSCALE_USE_WIP_CODE=1 be set in the environment for now.")
 		os.Exit(1)
@@ -130,6 +134,25 @@ func main() {
 		ts := &tsnet.Server{
 			Hostname: *flagHostname,
 			Dir:      *flagDir,
+		}
+
+		// Configure OAuth client secret and advertise tags if provided via environment variables
+		if oauthClientSecret != "" {
+			if advertiseTags == "" {
+				slog.Error("TS_ADVERTISE_TAGS must be specified when using TS_OAUTH_CLIENT_SECRET")
+				os.Exit(1)
+			}
+
+			tags := strings.Split(advertiseTags, ",")
+			for i, tag := range tags {
+				tags[i] = strings.TrimSpace(tag)
+			}
+
+			ts.AuthKey = oauthClientSecret
+			ts.AdvertiseTags = tags
+			slog.Info("Using OAuth client secret authentication", slog.String("tags", strings.Join(tags, ",")))
+		} else {
+			slog.Info("Using TS_AUTHKEY or interactive authentication")
 		}
 		if *flagDebugTSNet {
 			ts.Logf = func(format string, args ...any) {

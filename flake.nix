@@ -11,15 +11,15 @@
     nixpkgs,
     systems,
   }: let
-    go125Version = "1.24.7";
-    goHash = "sha256-Ko9Q2w+IgDYHxQ1+qINNy3vUg8a0KKkeNg/fhiS0ZGQ=";
+    go125Version = "1.25.1";
+    goHash = "sha256-0BDBCc7pTYDv5oHqtGvepJGskGv0ZYPDLp8NuwvRpZQ=";
     eachSystem = f:
       nixpkgs.lib.genAttrs (import systems) (system:
         f (import nixpkgs {
           system = system;
           overlays = [
             (final: prev: {
-              go_1_24 = prev.go_1_24.overrideAttrs {
+              go_1_25 = prev.go_1_25.overrideAttrs {
                 version = go125Version;
                 src = prev.fetchurl {
                   url = "https://go.dev/dl/go${go125Version}.src.tar.gz";
@@ -33,7 +33,7 @@
     formatter = eachSystem (pkgs: pkgs.nixpkgs-fmt);
 
     packages = eachSystem (pkgs: {
-      default = pkgs.buildGo124Module {
+      default = pkgs.buildGo125Module {
         pname = "tsidp";
         version =
           if (self ? shortRev)

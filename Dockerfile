@@ -6,7 +6,7 @@
 # docker buildx build --platform linux/amd64 -t tsidp-server:amd64 --load .
 
 # Build stage
-FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS builder
 WORKDIR /app
 
 # BuildKit will set these automatically when using buildx
