@@ -1,26 +1,16 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>Tailscale OIDC Identity Provider</title>
-    <link rel="stylesheet" type="text/css" href="/style.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  </head>
-
-  <body>
-    {{template "header"}}
-
+{{define "content"}}
     <main>
       <div class="header-actions">
         <div>
           <h2>OIDC Clients</h2>
-          {{if .}}
-            <p class="client-count">{{len .}} client{{if ne (len .) 1}}s{{end}} configured</p>
+          {{if .Clients}}
+            <p class="client-count">{{len .Clients}} client{{if ne (len .Clients) 1}}s{{end}} configured</p>
           {{end}}
         </div>
         <a href="/new" class="btn btn-primary">Add New Client</a>
       </div>
 
-      {{if .}}
+      {{if .Clients}}
       <table>
         <thead>
           <tr>
@@ -32,7 +22,7 @@
           </tr>
         </thead>
         <tbody>
-          {{range .}}
+          {{range .Clients}}
           <tr>
             <td>
               {{if .Name}}
@@ -79,5 +69,4 @@
       </div>
       {{end}}
     </main>
-  </body>
-</html> 
+{{end}}
