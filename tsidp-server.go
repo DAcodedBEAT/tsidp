@@ -51,12 +51,18 @@ var (
 	// extended debugging information
 	flagDebugAllRequests = flag.Bool("debug-all-requests", false, "capture and print all HTTP requests and responses")
 	flagDebugTSNet       = flag.Bool("debug-tsnet", false, "enable tsnet.Server logging")
+
+	flagVersion = flag.Bool("version", false, "print version and exit")
 )
 
 // main initializes and starts the tsidp server
 // Migrated from legacy/tsidp.go:75-239
 func main() {
 	flag.Parse()
+	if *flagVersion {
+		fmt.Println(server.GetVersion())
+		os.Exit(0)
+	}
 	ctx := context.Background()
 
 	// Get OAuth configuration from environment variables
